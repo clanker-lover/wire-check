@@ -143,6 +143,10 @@ wire-check was designed to run at integration points in a development workflow â
 - A git repository with at least one commit
 - A Cargo project with a `Cargo.toml`
 
+## Documentation Verification
+
+This project's module docs are verified against source code using [doc-drift](https://github.com/clanker-lover/doc-drift).
+
 ## Known Limitations
 
 - **Cross-reference check is text-pattern-based.** It searches for `crate::module::` and `module::` strings in source files rather than parsing the AST. This means it could produce false positives from references in comments or string literals, or miss references through re-exports. This is sufficient for typical Rust projects and keeps the tool dependency-free (no syn, no rust-analyzer), but it's worth knowing.
