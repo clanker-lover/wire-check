@@ -1,0 +1,17 @@
+/target
+
+# Internal development methodology (not part of the public project)
+CLAUDE.md
+.claude/
+justfile
+.workflow-state
+.workflow-audit
+.githooks/
+docs/METHODOLOGY.md
+docs/WARNINGS.md
+docs/RECOVERY.md
+docs/BUILDING_BLOCKS.md
+docs/specs/
+docs/task-cards/
+docs/research/
+docs/modules/TEMPLATE.md

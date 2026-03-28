@@ -1,0 +1,17 @@
+[sources]
+paths = ["src/"]
+exclude = ["main.rs"]
+
+[docs]
+module_paths = ["docs/modules/"]
+
+[checks]
+required_sections = ["What it does"]
+min_word_count = 30
+freshness = false
+excluded_attributes = ["cfg(test)"]
+identifier_whitelist = ["self", "Self"]
+
+[mapping]
+style = "flat"
+separator = "-"

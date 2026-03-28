@@ -1,0 +1,33 @@
+[package]
+name = "wire-check"
+version = "0.1.0"
+edition = "2024"
+description = "Verify newly added Rust code is actually integrated — dead code ratchet, cross-reference checks, and more"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/clanker-lover/wire-check"
+readme = "README.md"
+keywords = ["dead-code", "lint", "ratchet", "ci", "verification"]
+categories = ["command-line-utilities", "development-tools"]
+authors = ["Brandon <clanker-lover@users.noreply.github.com>", "Claude Opus 4.6 <noreply@anthropic.com>"]
+rust-version = "1.87.0"
+
+include = [
+    "src/**/*",
+    "Cargo.toml",
+    "Cargo.lock",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
+    "README.md",
+    "CHANGELOG.md",
+]
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+thiserror = "2"
+anyhow = "1"
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,11 @@
+# How tangled a function's logic can be (if/else/match nesting). Max 15.
+cognitive-complexity-threshold = 15
+
+# Max parameters a function can take. More than 5 = use a struct instead.
+too-many-arguments-threshold = 5
+
+# Max lines of logic per function (excludes comments/blanks). Keep it screenful-sized.
+too-many-lines-threshold = 40
+
+# How complex a type signature can be. Above 250 = make a type alias.
+type-complexity-threshold = 250
