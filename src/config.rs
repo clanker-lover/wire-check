@@ -48,10 +48,6 @@ pub(crate) struct FiltersConfig {
     /// Files that count as "test files" for Layer 4.
     #[serde(default)]
     pub test_files: Vec<PathBuf>,
-    /// Paths to exclude from all checks (reserved for future use).
-    #[serde(default)]
-    #[allow(dead_code)]
-    pub exclude_paths: Vec<PathBuf>,
 }
 
 fn default_base_ref() -> String {

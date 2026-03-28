@@ -33,8 +33,13 @@ pub(crate) fn detect_base_ref(project_root: &Path) -> Result<String, GitError> {
     Ok("HEAD~1".to_string())
 }
 
-/// List .rs files added since base_ref. Excludes test files and main.rs.
-pub(crate) fn new_files(project_root: &Path, base_ref: &str) -> Result<Vec<PathBuf>, GitError> {
+/// List .rs files added since base_ref. Excludes main.rs and configured test paths.
+pub(crate) fn new_files(
+    project_root: &Path,
+    base_ref: &str,
+    test_modules: &[String],
+    test_files: &[PathBuf],
+) -> Result<Vec<PathBuf>, GitError> {
     let output = Command::new("git")
         .args([
             "diff",
@@ -58,12 +63,29 @@ pub(crate) fn new_files(project_root: &Path, base_ref: &str) -> Result<Vec<PathB
         .lines()
         .filter(|line| !line.is_empty())
         .filter(|line| line.ends_with(".rs"))
-        .filter(|line| !line.contains("test"))
         .filter(|line| !line.ends_with("main.rs"))
+        .filter(|line| !is_test_path(line, test_modules, test_files))
         .map(PathBuf::from)
         .collect();
 
     Ok(files)
+}
+
+/// Check if a path matches configured test modules or test file patterns.
+fn is_test_path(path: &str, test_modules: &[String], test_files: &[PathBuf]) -> bool {
+    for module in test_modules {
+        // Match src/connection_tests.rs or src/connection_tests/anything.rs
+        if path.contains(&format!("/{module}.rs")) || path.contains(&format!("/{module}/")) {
+            return true;
+        }
+    }
+    for test_path in test_files {
+        let tp = test_path.to_string_lossy();
+        if path.starts_with(tp.as_ref()) || path.ends_with(tp.as_ref()) {
+            return true;
+        }
+    }
+    false
 }
 
 /// List all files modified since base_ref.
@@ -149,8 +171,7 @@ mod tests {
     #[test]
     fn new_files_returns_empty_when_no_changes() {
         let dir = setup_git_repo();
-        // Use HEAD as base — no new files since HEAD.
-        let files = new_files(dir.path(), "HEAD").expect("new_files");
+        let files = new_files(dir.path(), "HEAD", &[], &[]).expect("new_files");
         assert!(files.is_empty());
     }
 
@@ -159,5 +180,44 @@ mod tests {
         let dir = setup_git_repo();
         let files = modified_files(dir.path(), "HEAD").expect("modified_files");
         assert!(files.is_empty());
+    }
+
+    #[test]
+    fn is_test_path_matches_module_name() {
+        assert!(is_test_path(
+            "src/connection_tests.rs",
+            &["connection_tests".to_string()],
+            &[]
+        ));
+        assert!(is_test_path(
+            "src/connection_tests/helpers.rs",
+            &["connection_tests".to_string()],
+            &[]
+        ));
+    }
+
+    #[test]
+    fn is_test_path_does_not_match_substrings() {
+        // "attestation.rs" should NOT match test_modules ["tests"]
+        assert!(!is_test_path(
+            "src/attestation.rs",
+            &["tests".to_string()],
+            &[]
+        ));
+        assert!(!is_test_path("src/contest.rs", &["tests".to_string()], &[]));
+        assert!(!is_test_path(
+            "src/latest_results.rs",
+            &["tests".to_string()],
+            &[]
+        ));
+    }
+
+    #[test]
+    fn is_test_path_matches_test_files() {
+        assert!(is_test_path(
+            "tests/integration.rs",
+            &[],
+            &[PathBuf::from("tests/")]
+        ));
     }
 }

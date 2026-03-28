@@ -143,6 +143,12 @@ wire-check was designed to run at integration points in a development workflow â
 - A git repository with at least one commit
 - A Cargo project with a `Cargo.toml`
 
+## Known Limitations
+
+- **Cross-reference check is text-pattern-based.** It searches for `crate::module::` and `module::` strings in source files rather than parsing the AST. This means it could produce false positives from references in comments or string literals, or miss references through re-exports. This is sufficient for typical Rust projects and keeps the tool dependency-free (no syn, no rust-analyzer), but it's worth knowing.
+- **Dead code ratchet requires git history.** The tool needs at least one commit to compute diffs against. It won't work on a freshly initialized repo with no commits.
+- **Single-crate projects only.** Workspace support (multiple crates with cross-crate references) is not yet implemented.
+
 ## Related Tools
 
 | Tool | What It Does | How wire-check Differs |

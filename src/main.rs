@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::process;
 
 use clap::Parser;
+use layers::{Layer, LayerResult};
 
 /// Verify newly added Rust code is actually integrated into the project.
 #[derive(Parser)]
@@ -108,59 +109,79 @@ fn main() {
     };
 
     // Determine which layers to run.
-    let run_layer = |name: &str, enabled: bool| -> bool {
+    let should_run = |name: &str, enabled: bool| -> bool {
         match &cli.layer {
             Some(filter) => filter == name,
             None => enabled,
         }
     };
 
-    // Run layers, collect diagnostics.
-    let mut diagnostics = Vec::new();
+    let filters = &project_config.filters;
 
-    if run_layer("annotation-ban", project_config.layers.annotation_ban) {
-        diagnostics.extend(layers::check_annotation_ban(&crate_root));
+    // Run layers, collect results.
+    let mut results: Vec<(Layer, LayerResult)> = Vec::new();
+
+    // Layer 1
+    if should_run("annotation-ban", project_config.layers.annotation_ban) {
+        let diags = layers::check_annotation_ban(&crate_root);
+        results.push((Layer::AnnotationBan, LayerResult::Ran(diags)));
+    } else {
+        results.push((Layer::AnnotationBan, LayerResult::Skipped));
     }
 
-    if run_layer("cross-reference", project_config.layers.cross_reference) {
-        diagnostics.extend(layers::check_cross_references(
+    // Layer 2
+    if should_run("cross-reference", project_config.layers.cross_reference) {
+        let diags =
+            layers::check_cross_references(&project_root, &crate_root, &filters.test_modules);
+        results.push((Layer::CrossReference, LayerResult::Ran(diags)));
+    } else {
+        results.push((Layer::CrossReference, LayerResult::Skipped));
+    }
+
+    // Layer 3
+    if should_run("dead-code-ratchet", project_config.layers.dead_code_ratchet) {
+        match layers::check_dead_code_ratchet(
             &project_root,
-            &crate_root,
-            &project_config.filters.test_modules,
-        ));
-    }
-
-    if run_layer("dead-code-ratchet", project_config.layers.dead_code_ratchet) {
-        match layers::check_dead_code_ratchet(&project_root, &base_ref) {
-            Ok(diags) => diagnostics.extend(diags),
+            &base_ref,
+            &filters.test_modules,
+            &filters.test_files,
+        ) {
+            Ok(diags) => results.push((Layer::DeadCodeRatchet, LayerResult::Ran(diags))),
             Err(e) => {
                 eprintln!("Error in dead code ratchet: {e}");
                 process::exit(2);
             }
         }
+    } else {
+        results.push((Layer::DeadCodeRatchet, LayerResult::Skipped));
     }
 
-    if run_layer("test-requirement", project_config.layers.test_requirement) {
+    // Layer 4
+    if should_run("test-requirement", project_config.layers.test_requirement) {
         match layers::check_test_requirement(
             &project_root,
             &base_ref,
-            &project_config.filters.test_files,
+            &filters.test_modules,
+            &filters.test_files,
         ) {
-            Ok(diags) => diagnostics.extend(diags),
+            Ok(diags) => results.push((Layer::TestRequirement, LayerResult::Ran(diags))),
             Err(e) => {
                 eprintln!("Error in test requirement check: {e}");
                 process::exit(2);
             }
         }
+    } else {
+        results.push((Layer::TestRequirement, LayerResult::Skipped));
     }
 
     // Report.
-    let output = report::format(&diagnostics, output_format);
+    let output = report::format(&results, output_format);
     print!("{output}");
 
-    if diagnostics.is_empty() {
-        process::exit(0);
-    } else {
+    let has_failures = results
+        .iter()
+        .any(|(_, r)| matches!(r, LayerResult::Ran(d) if !d.is_empty()));
+    if has_failures {
         process::exit(1);
     }
 }

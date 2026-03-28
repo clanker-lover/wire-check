@@ -1,7 +1,7 @@
 [package]
 name = "wire-check"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 description = "Verify newly added Rust code is actually integrated — dead code ratchet, cross-reference checks, and more"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/clanker-lover/wire-check"
@@ -9,7 +9,7 @@ readme = "README.md"
 keywords = ["dead-code", "lint", "ratchet", "ci", "verification"]
 categories = ["command-line-utilities", "development-tools"]
 authors = ["Brandon <clanker-lover@users.noreply.github.com>", "Claude Opus 4.6 <noreply@anthropic.com>"]
-rust-version = "1.87.0"
+rust-version = "1.74.0"
 
 include = [
     "src/**/*",

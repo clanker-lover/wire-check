@@ -17,9 +17,17 @@ pub(crate) enum Layer {
 /// A single check failure.
 #[derive(Debug, Clone)]
 pub(crate) struct Diagnostic {
-    pub layer: Layer,
     pub file: PathBuf,
     pub message: String,
+}
+
+/// Result of running (or skipping) a layer.
+#[derive(Debug)]
+pub(crate) enum LayerResult {
+    /// Layer ran and produced these diagnostics (empty = pass).
+    Ran(Vec<Diagnostic>),
+    /// Layer was skipped (disabled or filtered out).
+    Skipped,
 }
 
 /// Errors from layers that need git or cargo.
@@ -51,7 +59,6 @@ pub(crate) fn check_annotation_ban(crate_root: &Path) -> Vec<Diagnostic> {
         // Crate-level: #![allow(...dead_code...)]
         if trimmed.starts_with("#![allow(") && trimmed.contains("dead_code") {
             diagnostics.push(Diagnostic {
-                layer: Layer::AnnotationBan,
                 file: crate_root.to_path_buf(),
                 message: format!(
                     "line {}: crate-level #![allow(dead_code)] hides unwired modules",
@@ -72,7 +79,6 @@ pub(crate) fn check_annotation_ban(crate_root: &Path) -> Vec<Diagnostic> {
                     || next_trimmed.starts_with("pub(crate) mod ")
                 {
                     diagnostics.push(Diagnostic {
-                        layer: Layer::AnnotationBan,
                         file: crate_root.to_path_buf(),
                         message: format!(
                             "line {}: #[allow(dead_code)] on mod declaration hides unwired module",
@@ -128,7 +134,6 @@ pub(crate) fn check_cross_references(
 
         if !has_reference {
             diagnostics.push(Diagnostic {
-                layer: Layer::CrossReference,
                 file: crate_root.to_path_buf(),
                 message: format!(
                     "module '{mod_name}' declared but never referenced from outside src/{mod_name}/"
@@ -234,8 +239,10 @@ fn collect_rs_files(dir: &Path, files: &mut Vec<PathBuf>) {
 pub(crate) fn check_dead_code_ratchet(
     project_root: &Path,
     base_ref: &str,
+    test_modules: &[String],
+    test_files: &[PathBuf],
 ) -> Result<Vec<Diagnostic>, LayerError> {
-    let new = git::new_files(project_root, base_ref)?;
+    let new = git::new_files(project_root, base_ref, test_modules, test_files)?;
     if new.is_empty() {
         return Ok(Vec::new());
     }
@@ -249,7 +256,6 @@ pub(crate) fn check_dead_code_ratchet(
                 .any(|nf| w.file.ends_with(nf) || nf.ends_with(&w.file))
         })
         .map(|w| Diagnostic {
-            layer: Layer::DeadCodeRatchet,
             file: w.file.clone(),
             message: format!("line {}: {}", w.line, w.message),
         })
@@ -264,9 +270,10 @@ pub(crate) fn check_dead_code_ratchet(
 pub(crate) fn check_test_requirement(
     project_root: &Path,
     base_ref: &str,
+    test_modules: &[String],
     test_files: &[PathBuf],
 ) -> Result<Vec<Diagnostic>, LayerError> {
-    let new = git::new_files(project_root, base_ref)?;
+    let new = git::new_files(project_root, base_ref, test_modules, test_files)?;
     if new.is_empty() {
         return Ok(Vec::new());
     }
@@ -284,7 +291,6 @@ pub(crate) fn check_test_requirement(
     let file_list: Vec<String> = new.iter().map(|f| f.display().to_string()).collect();
 
     Ok(vec![Diagnostic {
-        layer: Layer::TestRequirement,
         file: PathBuf::from("(project)"),
         message: format!(
             "new modules added ({}) but no test files updated",

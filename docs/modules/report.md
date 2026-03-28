@@ -14,5 +14,5 @@ the layers found.
 
 ## Dependencies
 
-Uses `serde_json` for JSON output. Imports `Diagnostic` and `Layer` from
+Uses `serde_json` for JSON output. Imports `Layer` and `LayerResult` from
 the layers module.
